@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-install:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gcc-release
+            cc: gcc
+            cxx: g++
+            build_type: Release
+          - name: clang-debug
+            cc: clang
+            cxx: clang++
+            build_type: Debug
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ca-certificates cmake libgtest-dev libssl-dev lsb-release ninja-build wget
+          wget --quiet "https://packages.apache.org/artifactory/arrow/ubuntu/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get install --yes ./apache-arrow-apt-source-latest-*.deb
+          sudo apt-get update
+          sudo apt-get install --yes libarrow-dev
+      - name: Configure
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
+          -DBUILD_TESTING=ON
+          -DEXASOL_GATEWAY_BUILD_EXAMPLES=ON
+          -DEXASOL_GATEWAY_BUILD_TOOLS=ON
+      - name: Build and test
+        run: |
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+      - name: Install
+        run: cmake --install build
+      - name: Verify stable C ABI symbols
+        run: |
+          nm -D --defined-only install/lib/libSessionGatewaySdk.so \
+            | awk '$3 ~ /^sessiongw_c_/ {print $3}' | sort > actual-symbols.txt
+          diff -u abi/sessiongw_c_symbols.txt actual-symbols.txt
+      - name: Build product-package consumers
+        run: |
+          cmake -S test/consumer -B consumer-product -G Ninja \
+            -DCMAKE_PREFIX_PATH="${{ github.workspace }}/install"
+          cmake --build consumer-product
+          LD_LIBRARY_PATH="${{ github.workspace }}/install/lib" ./consumer-product/exasol_gateway_c_consumer
+          LD_LIBRARY_PATH="${{ github.workspace }}/install/lib" ./consumer-product/exasol_gateway_cpp_consumer
+      - name: Build compatibility-package consumers
+        run: |
+          cmake -S test/consumer -B consumer-compat -G Ninja \
+            -DCMAKE_PREFIX_PATH="${{ github.workspace }}/install" \
+            -DUSE_SESSIONGATEWAY_COMPAT_PACKAGE=ON
+          cmake --build consumer-compat
+
+  sanitizers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ca-certificates clang cmake libgtest-dev libssl-dev lsb-release ninja-build wget
+          wget --quiet "https://packages.apache.org/artifactory/arrow/ubuntu/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get install --yes ./apache-arrow-apt-source-latest-*.deb
+          sudo apt-get update
+          sudo apt-get install --yes libarrow-dev
+      - name: Configure, build, and test with ASan/UBSan
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -S . -B build-sanitized -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON \
+            -DEXASOL_GATEWAY_BUILD_EXAMPLES=OFF \
+            -DCMAKE_CXX_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
+            -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=address,undefined' \
+            -DCMAKE_SHARED_LINKER_FLAGS='-fsanitize=address,undefined'
+          cmake --build build-sanitized
+          ctest --test-dir build-sanitized --output-on-failure
