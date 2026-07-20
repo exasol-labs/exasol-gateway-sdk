@@ -59,6 +59,8 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$prefix.tar.gz" "$prefix.tar.gz.sha256" "$prefix.spdx.json" --clobber
           else
+            prerelease=()
+            if [[ "$tag" == *-* ]]; then prerelease=(--prerelease); fi
             gh release create "$tag" "$prefix.tar.gz" "$prefix.tar.gz.sha256" "$prefix.spdx.json" \
-              --verify-tag --generate-notes --title "Exasol Gateway SDK ${tag#v}"
+              --verify-tag --generate-notes --title "Exasol Gateway SDK ${tag#v}" "${prerelease[@]}"
           fi
