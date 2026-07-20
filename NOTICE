@@ -1,0 +1,12 @@
+Exasol Gateway SDK
+Copyright (c) 2026 Exasol Labs
+
+This product is licensed under the MIT License.
+
+Runtime/build dependencies are not bundled in this source repository:
+- Apache Arrow, Apache License 2.0: https://arrow.apache.org/
+- OpenSSL, Apache License 2.0: https://www.openssl.org/
+- GoogleTest, BSD 3-Clause License (tests only): https://github.com/google/googletest
+
+Distributors are responsible for retaining the notices and license texts of the
+specific dependency versions they package.

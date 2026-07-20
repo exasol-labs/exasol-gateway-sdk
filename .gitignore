@@ -1,0 +1,5 @@
+build/
+cmake-build-*/
+install/
+compile_commands.json
+*.swp

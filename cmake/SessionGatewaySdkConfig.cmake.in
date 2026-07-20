@@ -1,0 +1,22 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(OpenSSL)
+find_dependency(Arrow CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/SessionGatewaySdkTargets.cmake")
+
+# Product-facing additive target. Keep the exported SessionGateway::Sdk target
+# unchanged for installed-package and source compatibility.
+if(TARGET SessionGateway::Sdk AND NOT TARGET ExasolGateway::Sdk)
+    add_library(ExasolGateway::Sdk INTERFACE IMPORTED)
+    set_property(TARGET ExasolGateway::Sdk PROPERTY
+        INTERFACE_LINK_LIBRARIES SessionGateway::Sdk)
+endif()
+if(TARGET SessionGateway::Sdk AND NOT TARGET ExasolGateway::C)
+    add_library(ExasolGateway::C INTERFACE IMPORTED)
+    set_property(TARGET ExasolGateway::C PROPERTY
+        INTERFACE_LINK_LIBRARIES SessionGateway::Sdk)
+endif()
+
+check_required_components(SessionGatewaySdk)
