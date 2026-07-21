@@ -15,8 +15,9 @@ assignment path.
 
 The wire contract is designed for eventual MPP execution, but the currently
 validated implementation is single-node and must reject unsupported multi-node
-upgrades before acknowledging the mode switch. All-node routing remains deferred
-to `td-7ab1c3`; existing coordinator code is preparatory scaffolding only.
+upgrades before acknowledging the mode switch. All-node routing requires a
+separately funded MPP follow-on project; existing coordinator code is
+preparatory scaffolding only.
 
 ## Design Principles
 
