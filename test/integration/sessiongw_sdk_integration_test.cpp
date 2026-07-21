@@ -37,6 +37,7 @@ namespace
 struct Options
 {
     sessiongw::WebSocketOptions websocket;
+    std::string aclPassword;
     std::string schema = "SGW_SDK_ITEST";
     std::string table = "WORKLOAD";
     std::string typedTable = "TYPE_MATRIX";
@@ -935,7 +936,7 @@ void checkDirectTableOperation(const Options& options,
 {
     sessiongw::WebSocketOptions websocket = options.websocket;
     websocket.user = user;
-    websocket.password = "SESSIONGW_ACL";
+    websocket.password = options.aclPassword;
     GatewaySession session(websocket);
 
     try
@@ -1036,7 +1037,7 @@ void exerciseAuthorizedMutation(const Options& options,
 {
     sessiongw::WebSocketOptions websocket = options.websocket;
     websocket.user = user;
-    websocket.password = "SESSIONGW_ACL";
+    websocket.password = options.aclPassword;
     GatewaySession session(websocket);
     session.request(sessiongw::MessageType::set_autocommit,
                     setAutocommitPayload(false),
@@ -1387,7 +1388,7 @@ void metadataErrorsAndDdlVersionStep(const Options& options)
 
     sessiongw::WebSocketOptions unauthorized = options.websocket;
     unauthorized.user = "SGW_ACL_NONE";
-    unauthorized.password = "SESSIONGW_ACL";
+    unauthorized.password = options.aclPassword;
     expectDescribeError(options,
                         unauthorized,
                         options.table,
@@ -3033,6 +3034,11 @@ Options parseOptions(const int argc, char** argv)
             options.websocket.password = requireValue(index, arg);
             ++index;
         }
+        else if (arg == "--acl-password")
+        {
+            options.aclPassword = requireValue(index, arg);
+            ++index;
+        }
         else if (arg == "--schema")
         {
             options.schema = requireValue(index, arg);
@@ -3134,7 +3140,8 @@ Options parseOptions(const int argc, char** argv)
         {
             std::cout << "Usage: " << argv[0]
                       << " [--host HOST] [--port PORT] [--user USER] [--password PASSWORD]"
-                      << " [--schema SCHEMA] [--table TABLE] [--typed-table TABLE] [--large-table TABLE]"
+                      << " [--acl-password PASSWORD] [--schema SCHEMA] [--table TABLE]"
+                      << " [--typed-table TABLE] [--large-table TABLE]"
                       << " [--conflict-table TABLE] [--concurrency N] [--concurrency-iterations N] [--large-rows N]"
                       << " [--large-insert-batch-rows N] [--large-fetch-batch-rows N]"
                       << " [--large-update-rows N] [--large-update-batch-rows N]"
@@ -3151,6 +3158,10 @@ Options parseOptions(const int argc, char** argv)
     const char* const instrumentation = std::getenv("EXASOL_SESSIONGW_INSTRUMENTATION");
     options.websocket.instrumentation_enabled =
         instrumentation != nullptr && std::string_view(instrumentation) != "0";
+    if (options.aclPassword.empty())
+    {
+        throw std::runtime_error("--acl-password is required for the ACL integration checks");
+    }
     if (options.concurrency == 0U || options.concurrencyIterations == 0U || options.largeRows == 0U ||
         options.largeInsertBatchRows == 0U || options.largeFetchBatchRows == 0U ||
         options.largeUpdateBatchRows == 0U || options.largeDeleteBatchRows == 0U)

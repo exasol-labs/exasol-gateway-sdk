@@ -375,18 +375,11 @@ cases. It also checks structured negative-path errors for fetch row/byte
 resource limits and unsupported non-read-only SQL. Set `SESSIONGW_RUN_TYPE_MATRIX=0`
 for a smoke-only live run.
 
-A broader SDK integration workload is available as:
-
-```bash
-SessionGatewaySdk/test/nano/run_integration_workload.sh
-```
-
-The script extracts and starts `.build/exasol-nano-db-2026.2.0-nano.3-x86_64.run`,
-compiles `SessionGatewaySdk/test/integration/sessiongw_sdk_integration_test.cpp`
-with the host C++ compiler against the public SDK headers/sources, prepares a
-nano table through `c4 sqlclient`, runs the SDK workload over WSS, verifies the
-final database state through SQL, and writes a report to
-`.build/sessiongw-sdk-integration/report.txt`.
+A broader SDK integration workload is built explicitly with
+`-DEXASOL_GATEWAY_BUILD_INTEGRATION_TEST=ON`. It requires live server
+credentials passed at invocation; no credentials are stored in the repository.
+The regular `--user`/`--password` pair is used by the primary test client and
+`--acl-password` is required for the separately configured ACL test users.
 
 The current workload covers:
 
